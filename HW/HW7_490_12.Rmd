@@ -1,0 +1,149 @@
+---
+title: "HW7_490_12"
+output: html_document
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+---
+
+### Exercises
+
+***
+
+<span style="font-family:Century Schoolbook; font-size:12pt;">**1.** Write down a general regular expression to match the following: ***(3 pts)***</span> 
+
+(a) Words with @ symbols in them, e.g., h@te or v|c0din
+
+```{r}
+words <- c("h@te", "v|c0din", "@ home", "c@t")
+grep("@[[:alpha:]]|[[:alpha:]]@",words)
+```
+
+(b) An IP address (Four sets of 1 to 3 digits separated by periods, e.g., 100.12.162.0)
+
+```{r}
+IP <- c("2988493.1", "100.12.162.0", "134.03.5.237", "8934580", "9.162.84", "4056.2.523.42")
+grep("^[[:digit:]]{1,3}\\.[[:digit:]]{1,3}\\.[[:digit:]]{1,3}\\.[[:digit:]]{1,3}$", IP)
+```
+
+(c) An email address that ends with .com, .edu, .net, .org, or .gov
+
+```{r}
+email <- c("weris@laief.com", "dran1@illinois.edu", "hello_r@elf.net", "dkvj123@cfa.org", "anno@gwer.gov")
+grep("^[a-zA-Z0-9._-]+@[a-zA-Z0-9]+\\.[com|edu|net|org|gov]{3}$",email)
+```
+
+***
+
+<span style="font-family:Century Schoolbook; font-size:12pt;">**2.** Carry out the following exercises on the State of the Union speeches database (available in moodle). ***(19 pts)***</span> 
+
+(a) Use readLines() to read in the speeches (available as a text file in moodle) where the return value is: character vector with one element/character string per line in the file
+
+```{r}
+setwd("/Users/mikedu/Desktop/490")
+f = file("stateoftheunion1790-2012.txt", "r")
+lines = readLines(f)
+close(f)
+```
+
+(b) Use regular expressions to find ***
+
+```{r}
+asteriskline = grep("^\\*\\*\\*$",lines)
+```
+
+
+(c) Use *** to identify the date of the speech.
+
+```{r}
+date = lines[asteriskline + 4]
+```
+
+(d) Use regular expressions to extract the year.
+
+```{r}
+yearlocation= unlist(gregexpr("[[:digit:]]{4}", date))
+year = as.numeric(substring(date,yearlocation,yearlocation+3))
+```
+
+(e) Use regular expressions to extract the month.
+
+```{r}
+datesplit = unlist(strsplit(date, " "))
+monthlocation = grep("[[:alpha:]]", datesplit)
+month = datesplit[monthlocation]
+```
+
+(f) Use *** to extract the name of the president State of the union speeches.
+
+```{r}
+presidents = lines[asteriskline + 3]
+presidents = unique(presidents)
+```
+
+(g) Use regular expressions and R to return the number of speeches in the dataset, and the number of presidents that gave speeches.
+
+```{r}
+length(date)
+length(presidents)
+```
+
+(h) Chop the speeches up into a list there is one element for each speech. Each element is a character vector. Check: does your number of list elements match your answer above?
+
+```{r}
+asteriskline1 = grep("^\\*\\*\\*",lines)
+speechlist = rep(0, length(asteriskline))
+for (i in 1:(length(asteriskline))){
+  speechlist[i] = list(lines[(asteriskline[i]+1):(asteriskline1[i+1]-1)])
+}
+length(speechlist)
+```
+
+(i) Eliminate apostrophes, numbers, and the phrase: (Applause.)
+
+```{r}
+for(i in 1:length(speechlist)){
+  speechlist[[i]] = gsub("\\'|[[:digit:]]|\\([Aa]pplause\\.?\\)", "", speechlist[[i]])
+}
+```
+
+(j) Make all the characters lower case.
+
+```{r}
+speechlist = sapply(speechlist, function(x) tolower(x))
+```
+
+(k) Split the sentences up where there are blanks and punctuation to create “words”.
+
+```{r}
+speechlist = lapply(speechlist, function(x) sapply(x, function(y) strsplit(y, "[ [:punct:]]")))
+```
+
+(l) Drop any empty words that resulted from this split.
+
+```{r}
+speechlist = lapply(speechlist, function(x) sapply(x, function(y) y[y != ""]))
+```
+
+(m) Create a word vector for each speech.
+
+```{r}
+words = unique(unlist(speechlist))
+```
+
+(n) Normalize the word vectors to get term frequencies.
+
+```{r}
+a = rle(sort(unlist(speechlist)))
+n = length(words)
+wordvectors = as.data.frame(cbind(number=a$values,n=a$lengths), stringsAsFactors=F, row.names = 1:n)
+colnames(wordvectors) <- c("Term","Frequency")
+values = sum(as.numeric(wordvectors$Frequency))
+wordvectors = as.data.frame(cbind(number=a$values,n=a$lengths/values), stringsAsFactors=F, row.names = 1:n)
+```
+
+(o) Carry out some exploratory analysis of the data and term frequencies. For example, find the number of sentences, extract the long words, and the political party. Plot and interpret the term frequencies. What are your observations?  ***(5 pts)***
+
+```{r}
+lines1 = lines[asteriskline1[1]:asteriskline1[223]]
+sentences = length(gregexpr('[[:alnum:] ][.!?]', lines1))
+longwords = wordvectors[nchar(wordvectors$Term) > 15,]
+```
